@@ -1,0 +1,32 @@
+@startuml Cache Sequence Diagram
+actor Operator as operator
+control "MES API" as api
+collections Cache as cache
+database "MES Db" as db
+
+== Операция чтения ==
+autonumber 1
+operator -> api : Запрашивает список заказов по фильтру
+api -> cache : Поиск результата в кэше по запросу
+alt  Запись в кэше найдена
+   cache -> api: Возврат результата из кэша
+else Запись в кэше отсутствует
+    cache -> api: возврат null
+    api -> db : запрос к БД
+    db -> api: возврат списка заказов из БД
+    api -> cache: обновление списка заказов в кэше
+    cache -> api: кэш обновлен
+end
+api -> operator: Возврат списка заказов
+
+== Операция записи ==
+autonumber 1
+operator -> api: изменяет статус заказа
+api -> db: запись изменений в БД
+db -> api: завершение транзакции
+api -> operator: подтверждение изменения статуса
+
+== Инвалидация ==
+autonumber 1
+cache -> cache: инвалидация по таймеру
+@enduml
