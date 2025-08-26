@@ -1,0 +1,62 @@
+@startuml
+!define C4P https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master
+!includeurl C4P/C4_Container.puml
+!includeurl C4P/C4_Context.puml
+
+AddRelTag("tracing", $lineColor="red", $textColor="red", $lineStyle=BoldLine())
+AddElementTag("tracing", $bgColor="#FF474C")
+
+skinparam linetype ortho
+LAYOUT_LEFT_RIGHT()
+
+Person_Ext(customer, "Customer", "Description of external person.")
+Person_Ext(apiUser, "API user", "Description of external person.",$sprite="robot")
+Person(seller, "Seller", "Operates with order, confirms manufacturing for the user")
+Person(operator, "Operator", "Takes order in work, manufactures jewerly")
+
+Enterprise_Boundary(jewelryStoreSystem, "Jewerly Store System") {
+
+Container(shopApi, "Shop API", "SpringBoot", "- provide list of shop items\n- receives user generated or uploaded 3d file\n- save information about order from customer perspective")
+Container(mesApi, "MES API", "C#", "- Assigns orders on operators\n- Shows list of orders\n- Calculates price of the order")
+ContainerQueue(messagesQueue, "Messages Queue", "RabbitMQ", "Send messages about new orders, changes of statuses between containers, has several topics")
+Container(internetShop, "Internet Shop", "Vue, TypeScript, Threejs", "User can make an order, upload 3d model, work in 3d editor")
+Container(mes, "MES", "React, typescript", "provide interface to assign orders on operators, shows list of orders")
+Container(crm, "CRM", "Vue, Typescript", "Description of web browser container role/responsibility.")
+Container(crmApi, "CRM API", "SpringBoot", "Description of container role/responsibility.")
+ContainerDb(shopDb, "Shop DB", "PostgreSQL", "Holds main information about work with customers and its orders")
+ContainerDb(mesDb, "MES DB", "PostgreSQL", "Holds information about orders, its assignments on operators and statuses from MES perspective")
+Container(filesStorage, "3d files storage", "S3-based storage", "stores 3d files so that can be calculated")
+
+System_Boundary(tracing, "Jaeger Installation") {
+  ContainerQueue(tracingCollector, "jaeger-collector", "", "", $tags="tracing")
+  Container(tracingSystem, "jaeger-ui", "Jaeger", "User Interface", $tags="tracing")
+  ContainerDb(tracingDb, "OpenSearch", "Storing trace events", "", $tags="tracing")
+}
+
+}
+
+UpdateSystemBoundaryStyle($bgColor="#E5B5B6", $fontColor="brown", $borderColor="brown")
+
+Rel(customer, internetShop, "")
+Rel(seller, crm, "")
+Rel_(apiUser, mesApi, "", "--->")
+Rel(internetShop, shopApi, "")
+Rel(shopApi, shopDb, "")
+Rel(shopApi, filesStorage, "Uploads files")
+Rel(crm, crmApi, "")
+Rel(crmApi, shopDb, "")
+BiRel(crmApi, messagesQueue, "")
+Rel(mes, mesApi, "")
+Rel(mesApi, mesDb, "")
+BiRel(mesApi, messagesQueue, "")
+Rel(mesApi, filesStorage, "")
+Rel(operator, mes, "")
+
+Rel(tracingCollector, tracingDb, "")
+Rel(tracingSystem, tracingDb, "")
+
+Rel(mesApi, tracingCollector, "", $tags="tracing")
+Rel(shopApi, tracingCollector, "", $tags="tracing")
+Rel(crmApi, tracingCollector, "", $tags="tracing")
+Lay_Distance(crmApi, tracingCollector,1)
+@enduml
